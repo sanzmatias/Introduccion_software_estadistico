@@ -1,0 +1,446 @@
+---
+title: ### "Trabajo Final"
+author: "Matias Ezequiel Sanz"
+date: "30/5/2022"
+output: html_document
+---
+
+#### UNTREF - MAGIE
+#### Introducción al Software Estadístico
+##### Mayo 2022 
+
+
+<center> <h1>**Salarios en el sector IT**</h1> </center>
+
+
+
+##### **Índice**
+
+1. Fundamento
+2. Fuente de datos
+
+    2.1 Tratamiento de datos 
+3. Análisis
+
+    3.1 Particularidades sobre el salario
+    
+    3.2 Distribución de la muestra
+    
+    3.3 Salario Neto y Bruto Vs. Región
+    
+    3.4 Tamaño de las organizaciones
+    
+    3.5 Nivel de estudios alcanzado 
+    
+    3.6 Salario Neto vs. Experiencia Laboral
+4. Conclusiones
+
+<div style="text-align: justify">
+**1.**
+
+El presente trabajo se fundamenta en intentar entender\ cuáles son los ingresos de los trabajadores\ del sector IT en Argentina y qué variables entran en\ juego en la composición de dicho salario. En la\ actualidad, este sector está en auge, generando cada\ día mayor valor agregado, acompañado de una alta\ demanda de ingresos de nuevos trabajadores al sector.\ Dado este escenario, es de suma importancia intentar\ comprender cuál es la remuneración en dicho sector,\ las regiones geográficas en las cuales se sitúan la\ mayoría de las oportunidades laborales y el nivel de\ preparación académica que el sector demanda. \
+
+Con el motivo de intentar responder dichas preguntas\ nos basamos en los datos publicados por el sitio\ Openqube, el cual trabajo desde el año 2014 realizando\ encuestas a toda la comunidad tecnológica,\ tanto en actividad como fuera de ella.\ La misión de Openqube es generar un repositorio de\ información que sirva como orientación a las personas\ que se encuentran insertas en dicho ámbito,\ aspirantes, o todo aquel que busque información\ actualizada sobre el sector y sus diversas\ características. \
+
+Los datos utilizados se encuentran publicados en\ Github, en el reporsitorio de Openqube:\
+
+https://github.com/openqube/openqube-sueldos
+
+Para obtener mayor información sobre el sitio\ Openqube se recomienda ingresar al siguiente link:\
+
+https://openqube.io/
+
+**2.**
+
+Los datos utilizados comprenden el período de\ junio-agosto 2021. Como marco de referencia utilizamos\ los siguientes valores respecto al precio\ dólar promedio para dicho período: $100 en el mercado\ oficial y $170 en el mercado paralelo, manteniendo así\ una brecha del %70. \
+
+Al momento de llevar a cabo el desarrollo del presente\ trabajo, se tomó como unidad de análisis el\ salario como unidad de análisis. El salario o\ remuneración se define como la cantidad de dinero que\ recibe regularmente un trabajador o empleado, a cambio\ de un tiempo de trabajo estipulado, de acuerdo\ a lo explícitamente acordado en un contrato\ laboral voluntario, ya sea de carácter formal o\ informal. \
+
+</div>
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(knitr)
+library(plyr)
+library(gmodels)
+
+encuesta_oq <- read.csv('C:/Users/Matías/OneDrive/Escritorio/R - UNTREF/encuesta_openqube_202102.csv')
+
+dim(encuesta_oq)
+sum(is.na(encuesta_oq))
+encuesta_oq <- na.exclude(encuesta_oq)
+dim(encuesta_oq)
+```
+<div style="text-align: justify">
+
+
+**2.1**
+
+El conjunto de datos con el que se relizó el actual\ análisis consta de 70 variables y 5876 registros. La\ gran mayoría de los registros presentaron datos\ faltantes, por lo que se decidió eliminarlos. De esta\ forma nuestra población se redujo a 2026\ registros.\
+
+**3.**
+
+El presente apartado brinda un breve análisis acerca\ de los principales indicadores utilizados para el\ desarrollo del trabajo.\
+
+**3.1**
+
+A partir del salario bruto y neto (expresado en\ unidades pesos), encontramos que la mediana es una\ medida menos distorsiva que la media. Fundamentamos\ esta afirmación dado que la media es menos\ representativa, dado que, al existir una fuerte\ brecha entre el salario mínimo y el salario máximo,\ este estadístico podría distorsionar el presente\ análisis.\
+
+Respecto al salario bruto la media es de $195029,\ mientras que la mediana se ubica en torno a los\ $154000. En términos netos, la mediana se ubica en\ $125000, mientras la media se ubica en torno a los\ $227429.  Este dato es llamativo, dado que se espera\ que el salario neto disminuya respecto al salario\ bruto. Al tomar la media como referencia observamos\ que esto no sucede. Por lo tanto, entendemos que la\ mediana sigue un patrón menos distorsivo al momento\ de realizar nuestro análisis.\
+
+Además, se observó que la desviación típica en el\ salario bruto es de $ 270121.2, mientras que en el\ salario neto es de $ 13298766. Aunque estos valores\ se pueden considerar atípicos, se decidió no\ elimnarlos, dado que nos podría ayudar a entender\ algún tipo de comportamiento que se esté dando dentro\ de este rubro en particular. La elección de\ conservar estos datos podría insentivar a generar\ nuevos tipos de análisis en relación a las\ regulaciones dentro del sector IT. \
+</div>
+
+```{r summary_salario, echo=TRUE, message=FALSE, warning=FALSE}
+resumen_bruto <- summary(encuesta_oq$salario_mensual_o_retiro_bruto_en_tu_moneda_local)
+sd_bruto <- sd(resumen_bruto)
+resumen_neto <- summary(encuesta_oq$salario_mensual_o_retiro_neto_en_tu_moneda_local)
+sd_neto <- sd(resumen_neto)
+
+```
+<div style="text-align: justify">
+
+**3.2**
+
+Si bien el análisis propuesto se basa en el estudio\ del sector IT en el territorio Argentino, se decidió\ no contemplar regiones en las que participen menos de\ 20 trabajadores. Este recorte se realizó con\ fines de evidenciar la concentración de asalariados\ en determinadas regiones. \
+
+Se observa que el %76 de los trabajadores se\ encuentran situados en la región del AMBA, siendo el\ la población de CABA el %55 sobre el total. El resto\ de las personas observadas se distribuyen con un\ porcentaje minoritario entre las provincias de\ Córdoba, Santa Fe, Mendoza y Entre Ríos.\
+
+</div>
+
+```{r años_exp, echo=TRUE, message=FALSE, warning=FALSE}
+encuesta_oq2 <- transmute(encuesta_oq,
+                         encuesta_oq, donde_estas_trabajando = 
+                           case_when(donde_estas_trabajando == 'CÃ³rdoba' ~ 'Cordoba',
+                                     donde_estas_trabajando == 'RÃ­o Negro' ~ 'Rio Negro',
+                                     donde_estas_trabajando == 'NeuquÃ©n' ~ 'Neuquen',
+                                     donde_estas_trabajando == 'TucumÃ¡n' ~ 'Tucuman',
+                                     donde_estas_trabajando == 'Ciudad AutÃ³noma de Buenos Aires'  ~ 'CABA',
+                                     donde_estas_trabajando == 'Santa Fe'  ~ 'Santa Fe',
+                                     donde_estas_trabajando == 'Buenos Aires'  ~ 'Buenos Aires',
+                                     donde_estas_trabajando == 'Corrientes'  ~ 'Corrientes',
+                                     donde_estas_trabajando == 'Tierra del Fuego'  ~ 'Tierra del Fuego',
+                                     donde_estas_trabajando == 'Entre RÃ­os'  ~ 'Entre Rios',
+                                     donde_estas_trabajando == 'Mendoza'  ~ 'Mendoza',
+                                     donde_estas_trabajando == 'Chubut'  ~ 'Chubut',
+                                     donde_estas_trabajando == 'Misiones'  ~ 'Misiones',
+                                     donde_estas_trabajando == 'La Rioja'  ~ 'La Rioja',
+                                     donde_estas_trabajando == 'Jujuy'  ~ 'Jujuy',
+                                     donde_estas_trabajando == 'Salta'  ~ 'Salta',
+                                     donde_estas_trabajando == 'Chaco'  ~ 'Chaco',
+                                     donde_estas_trabajando == 'San Juan'  ~ 'San Juan',
+                                     donde_estas_trabajando == 'La Pampa'  ~ 'La Pampa',
+                                     donde_estas_trabajando == 'Formosa'  ~ 'Formosa',
+                                     donde_estas_trabajando == 'Santiago del Estero'  ~ 'Santiago del Estero',
+                                     donde_estas_trabajando == 'San Luis'  ~ 'San Luis',
+                                     donde_estas_trabajando == 'Santa Cruz'  ~ 'Santa Cruz',
+                           ))
+
+top6_provincias <- encuesta_oq2%>% 
+  group_by(donde_estas_trabajando)%>%
+  filter(!is.na(donde_estas_trabajando))%>%
+  dplyr::summarize(Cantidad = n())%>% 
+  mutate(Porcentaje = Cantidad / sum(Cantidad))%>% 
+  top_n(6)
+
+
+knitr::kable(top6_provincias, 
+             align = "c", 
+             caption = "Cantidad de Trabajadores por Región",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))
+```
+
+<div style="text-align: justify">
+
+**3.3**
+
+Como se expresó anteriormente, el presente análisis\ se basa en la comparación de 6 regiones, las cuales\ contienen entre 25 personas en la muestra (Entre\ Ríos) y 1112 (CABA). \
+
+Se evidencia que, en la cima de los salarios, tanto\ bruto, como neto, se encuentra la provincia de\ Mendoza y CABA. Si bien a primera vista se observa\ una paridad salarial entre ambas regiones, es\ importante destacar que participan 37 individuos de\ Mendoza en la presente muestra. Por lo tanto, podría\ haber fluctuaciones más significativas tanto en el\ salario bruto como neto en la provincia de Mendoza,\ que en CABA. \
+
+Por su parte, se observa que Entre Ríos es la\ provincia con menos ingresos respecto a los\ trabajadores del sector IT.\ 
+
+En un rango mucho más compacto, se observan muy pocas\ diferencias entre las provincias de Buenos\ Aires, Córdoba y Santa Fe. \
+
+</div>
+
+```{r, fig.width=12, fig.height=6, tabla_bruto_mediana, echo=TRUE, message=FALSE, warning=FALSE}
+
+tabla_bruto_mediana <- encuesta_oq %>% 
+  transmute(encuesta_oq, salario_mensual_o_retiro_bruto_en_tu_moneda_local,
+            encuesta_oq, donde_estas_trabajando = 
+            case_when(donde_estas_trabajando == 'CÃ³rdoba' ~ 'Cordoba',
+                      donde_estas_trabajando == 'Ciudad AutÃ³noma de Buenos Aires'  ~ 'CABA',
+                      donde_estas_trabajando == 'Santa Fe'  ~ 'Santa Fe',
+                      donde_estas_trabajando == 'Buenos Aires'  ~ 'Buenos Aires',
+                      donde_estas_trabajando == 'Entre RÃ­os'  ~ 'Entre Rios',
+                      donde_estas_trabajando == 'Mendoza'  ~ 'Mendoza'))%>%
+  filter(!is.na(donde_estas_trabajando))%>%
+  group_by(donde_estas_trabajando) %>%
+  dplyr::summarise(count = n(),
+  Mediana_sbruto = median(salario_mensual_o_retiro_bruto_en_tu_moneda_local/1000))%>%
+  mutate(Porcentaje = count / sum(count))%>% 
+  arrange(desc(Mediana_sbruto))
+
+
+knitr::kable(tabla_bruto_mediana, 
+             align = "c", 
+             caption = "Salario Bruto (Mediana)",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))  
+
+boxplot_bruto <- encuesta_oq
+transmute(encuesta_oq, salario_mensual_o_retiro_bruto_en_tu_moneda_local,
+          encuesta_oq, donde_estas_trabajando = 
+            case_when(donde_estas_trabajando == 'CÃ³rdoba' ~ 'Cordoba',
+                      donde_estas_trabajando == 'Ciudad AutÃ³noma de Buenos Aires'  ~ 'CABA',
+                      donde_estas_trabajando == 'Santa Fe'  ~ 'Santa Fe',
+                      donde_estas_trabajando == 'Buenos Aires'  ~ 'Buenos Aires',
+                      donde_estas_trabajando == 'Entre RÃ­os'  ~ 'Entre Rios',
+                      donde_estas_trabajando == 'Mendoza'  ~ 'Mendoza'))%>%
+filter(!is.na(donde_estas_trabajando))%>%
+ggplot(aes(x = donde_estas_trabajando, 
+               y = salario_mensual_o_retiro_bruto_en_tu_moneda_local,
+               fill = donde_estas_trabajando )) + 
+               coord_cartesian(ylim = c(0, 1000000)) +
+               stat_boxplot(geom = "errorbar",
+               width = 0.25) +
+       labs(y = "Salario Bruto", 
+       x = "Región", 
+       title = "Salario Bruto vs. Región",
+       caption = "Fuente: Encuesta Openqube")+
+               geom_boxplot()
+
+```
+
+
+```{r, fig.width=12, fig.height=6, salario_neto, echo=TRUE, message=FALSE, warning=FALSE}
+tabla_mediana_neto <- encuesta_oq %>% 
+    transmute(encuesta_oq, salario_mensual_o_retiro_neto_en_tu_moneda_local,
+              encuesta_oq, donde_estas_trabajando = 
+              case_when(donde_estas_trabajando == 'CÃ³rdoba' ~ 'Cordoba',
+                      donde_estas_trabajando == 'Ciudad AutÃ³noma de Buenos Aires'  ~ 'CABA',
+                      donde_estas_trabajando == 'Santa Fe'  ~ 'Santa Fe',
+                      donde_estas_trabajando == 'Buenos Aires'  ~ 'Buenos Aires',
+                      donde_estas_trabajando == 'Entre RÃ­os'  ~ 'Entre Rios',
+                      donde_estas_trabajando == 'Mendoza'  ~ 'Mendoza'))%>%
+  filter(!is.na(donde_estas_trabajando))%>%
+  group_by(donde_estas_trabajando) %>%
+  dplyr::summarise(count = n(),
+  Mediana_sneto = median(salario_mensual_o_retiro_neto_en_tu_moneda_local))%>%
+  mutate(Porcentaje = count / sum(count))%>%
+  arrange(desc(Mediana_sneto))
+
+knitr::kable(tabla_mediana_neto, 
+             align = "c", 
+             caption = "Salario Bruto (Mediana)",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))  
+
+boxplot_neto <- encuesta_oq
+transmute(encuesta_oq, salario_mensual_o_retiro_neto_en_tu_moneda_local,
+          encuesta_oq, donde_estas_trabajando = 
+            case_when(donde_estas_trabajando == 'CÃ³rdoba' ~ 'Cordoba',
+                      donde_estas_trabajando == 'Ciudad AutÃ³noma de Buenos Aires'  ~ 'CABA',
+                      donde_estas_trabajando == 'Santa Fe'  ~ 'Santa Fe',
+                      donde_estas_trabajando == 'Buenos Aires'  ~ 'Buenos Aires',
+                      donde_estas_trabajando == 'Entre RÃ­os'  ~ 'Entre Rios',
+                      donde_estas_trabajando == 'Mendoza'  ~ 'Mendoza'))%>%
+filter(!is.na(donde_estas_trabajando))%>%
+ggplot(aes(x = donde_estas_trabajando, 
+               y = salario_mensual_o_retiro_neto_en_tu_moneda_local,
+               fill = donde_estas_trabajando )) + 
+               coord_cartesian(ylim = c(0, 1000000)) +
+               stat_boxplot(geom = "errorbar",
+               width = 0.25) +
+       labs(y = "Salario Neto", 
+       x = "Región", 
+       title = "Salario Neto vs. Región",
+       caption = "Fuente: Encuesta Openqube")+
+               geom_boxplot()
+```
+<div style="text-align: justify">
+
+**3.4**
+
+Al momento de analizar el tipo de organización en el\ que trabajan los empleados del sector IT, en\ Argentina, se destaca que más del %50 de la muestra\ trabaja en espacios con una cantidad de empleados\ entre 1 y 1000. Por otro lado, se deja manifiesto\ que\ solo el %13 de las personas trabajan en empresas\ de más de 10.000 integrantes.\
+
+</div>
+
+```{r, fig.width=12, fig.height=6, cant_pers, echo=TRUE, message=FALSE, warning=FALSE}
+cant_pers <- encuesta_oq%>% 
+  group_by(cantidad_de_personas_en_tu_organizacion)%>% 
+  dplyr::summarize(count = n())%>%
+  mutate(Porcentaje = count / sum(count))%>%
+  arrange(desc(count))
+
+knitr::kable(cant_pers, 
+             align = "c", 
+             caption = "Cantidad de Personas por Organización",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))  
+
+  
+  
+tamaño_org <- encuesta_oq
+transmute(encuesta_oq, cantidad_de_personas_en_tu_organizacion,
+          encuesta_oq, salario_mensual_o_retiro_neto_en_tu_moneda_local)%>%
+  ggplot(encuesta_oq, mapping = aes(x = cantidad_de_personas_en_tu_organizacion, 
+                                    y = salario_mensual_o_retiro_neto_en_tu_moneda_local/salario_mensual_o_retiro_neto_en_tu_moneda_local,
+                                    color = "green",
+                          fill = cantidad_de_personas_en_tu_organizacion)) +
+  coord_cartesian(ylim = c(0, 500)) +
+  geom_bar(stat = "identity")+
+  theme(axis.text.x = element_text(face = "bold", angle = 45, hjust = 1, size = 10), 
+        axis.title.x = element_blank(), 
+        axis.text.y = element_text(size = 10), 
+        axis.title.y = element_text(size = 10, margin = margin(t = 0, r = 10, b = 0, l = 0)), 
+        legend.position = "none")+
+    labs(y = "Cantidad de Personas", 
+    x = "Tamaño de la Organización", 
+    title = "Tamaño de la Organización vs. Cantidad de Personas",
+    caption = "Fuente: Encuesta Openqube")  
+
+```
+
+<div style="text-align: justify">
+
+**3.5**
+
+El análisis centrado en el nivel de educación\ evidencia que un nivel de estudios alcanzado de\ carácter terciario y sobre todo universitario, sería\ óptimo al momento de integrar organizaciones\ dedicadas a la industria de la tecnología. \
+
+Por el contrario, si bien los niveles de estudio\ inferiores a terciario/universitario escasean más en\ la composición de la muestra, no es menos importante\ destacar que los niveles superiores a universitario\ no superan en cantidad de personas a los niveles por\ debajo. \
+
+Este fenómeno podría deberse tanto a que superar un\ umbral académico no genera mayores oportunidades,\ como así también a que pocas personas logran\ alcanzar\ niveles de posgrado o superiores. De todas\ formas, se deja en claro que los niveles de estudio\ superiores a terciario/universitario, engloban\ también dichas categorías.\
+
+<div>
+```{r, fig.width=12, fig.height=6, nivel_estudio, echo=TRUE, message=FALSE, warning=FALSE}
+nivel_estudio<- encuesta_oq%>% 
+  group_by(nivel_de_estudios_alcanzado)%>% 
+  dplyr::summarize(count = n())%>%
+mutate(Porcentaje = count / sum(count))
+
+knitr::kable(nivel_estudio, 
+             align = "c", 
+             caption = "Nivel de Educación Alcanzado",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))  
+
+
+nivel_estudio <- encuesta_oq
+transmute(encuesta_oq, salario_mensual_o_retiro_neto_en_tu_moneda_local,
+          encuesta_oq, nivel_de_estudios_alcanzado =
+            case_when(nivel_de_estudios_alcanzado == 'Secundario' ~ 'Secundario',
+                      nivel_de_estudios_alcanzado == 'Terciario' ~ 'Terciario',
+                      nivel_de_estudios_alcanzado == 'Universitario' ~ 'Universitario',
+                      nivel_de_estudios_alcanzado == 'Posgrado' ~ 'Posgrado',
+                      nivel_de_estudios_alcanzado == 'Doctorado' ~ 'Doctorado',
+                      nivel_de_estudios_alcanzado == 'Posdoctorado' ~ 'Posdoctorado'))%>%
+                      filter(!is.na(nivel_de_estudios_alcanzado))%>%
+  ggplot(encuesta_oq, mapping = aes(x = nivel_de_estudios_alcanzado, 
+                                    y = salario_mensual_o_retiro_neto_en_tu_moneda_local/
+                                        salario_mensual_o_retiro_neto_en_tu_moneda_local,
+                                    color = "green",
+                                    fill = cantidad_de_personas_en_tu_organizacion)) +
+  coord_cartesian(ylim = c(0, 1500)) +
+  geom_bar(stat = "identity")+
+  theme(axis.text.x = element_text(face = "bold", angle = 45, hjust = 1, size = 10), 
+        axis.title.x = element_blank(), 
+        axis.text.y = element_text(size = 10), 
+        axis.title.y = element_text(size = 10, margin = margin(t = 0, r = 10, b = 0, l = 0)), 
+        legend.position = "none")+
+  labs(y = "Cantidad de Personas", 
+       x = "Nivel de Estudios Alcanzado", 
+       title = "Nivel de Estudios Alcanzado vs. Cantidad de Personas",
+       caption = "Fuente: Encuesta Openqube")
+
+```
+
+<div style="text-align: justify">
+
+**3.6**
+
+Al momento de analizar los años de experiencia vs.\ la\ remuneración percibida por los trabajadores del\ sector IT, se evidencia una clara tendencia de que,\ a\ mayor cantidad de años de experiencia, mayor es\ el\ nivel de salario percibido. No obstante, es\ importante aclarar que no se está desarrollando un\ análisis jerárquico, por lo tanto, no podemos\ aseverar que el incremento salarial se deba solo a\ los años que una persona lleva dedicando a dicha\ actividad. Es posible, que a medida que los\ trabajadores transitan por las empresas, no solo se\ modifique su salario, sino un rango dentro de la\ estructura, sus tareas, como así también su nivel de\ responsabilidad. \
+
+Además, se observan dos fenómenos marcados, el\ primero es que el umbral en donde las personas\ incrementan considerablemente sus ingresos parece\ ubicarse en el segmento de los 10 a 20 años de\ experiencia. El segundo fenómeno esta relacionado\ con\ la observación de casos atípicos, los cuales\ probablemente correspondan a cargos superiores\ dentro\ de las estructuran organizacionales. Se\ evidencia que, a partir de los 5 años es posible\ acceder a un nivel salarial ubicado en la cúspide de\ la pirámide.\
+
+<div>
+
+```{r fig.height=6, fig.width=12, message=FALSE, warning=FALSE, anos_exp, echo=TRUE}
+  nivel_exp_neto<- encuesta_oq%>% 
+  transmute(encuesta_oq, anos_de_experiencia =
+            case_when(anos_de_experiencia > 0 & anos_de_experiencia < 3
+                      ~ '1 - 3', 
+                      anos_de_experiencia > 3 & anos_de_experiencia < 5
+                      ~ '3 - 5',
+                      anos_de_experiencia > 5 & anos_de_experiencia < 10
+                      ~ '5 - 10',
+                      anos_de_experiencia > 10 & anos_de_experiencia < 20
+                      ~ '10 - 20',
+                      anos_de_experiencia > 20 
+                      ~ '+20'))%>%
+  filter(!is.na(anos_de_experiencia))%>%
+  group_by(anos_de_experiencia)%>% 
+  dplyr::summarize(count = n())%>% 
+  mutate(Porcentaje = count / sum(count))
+
+knitr::kable(nivel_exp_neto, 
+             align = "c", 
+             caption = "Nivel de Experiencia vs. Salario Neto",
+             digits = 2, 
+             format.args = list(decimal.mark = ",", big.mark = "."))  
+
+boxplot_exp_neto <- encuesta_oq
+transmute(encuesta_oq, salario_mensual_o_retiro_neto_en_tu_moneda_local,
+          encuesta_oq, anos_de_experiencia =
+            case_when(anos_de_experiencia > 0 & anos_de_experiencia < 3
+                      ~ '1 - 3', 
+                      anos_de_experiencia > 3 & anos_de_experiencia < 5
+                      ~ '3 - 5',
+                      anos_de_experiencia > 5 & anos_de_experiencia < 10
+                      ~ '5 - 10',
+                      anos_de_experiencia > 10 & anos_de_experiencia < 20
+                      ~ '10 - 20',
+                      anos_de_experiencia > 20 
+                      ~ '+20'))%>%
+  filter(!is.na(anos_de_experiencia))%>%
+  ggplot(aes(x = anos_de_experiencia, 
+             y = salario_mensual_o_retiro_neto_en_tu_moneda_local,
+             fill = anos_de_experiencia )) + 
+  coord_cartesian(ylim = c(0, 1000000)) +
+  stat_boxplot(geom = "errorbar",
+               width = 0.25) +
+  labs(y = "Salario Neto", 
+       x = "Años de Experiencia", 
+       title = "Años de Experiencia vs. Salario Neto",
+       caption = "Fuente: Encuesta Openqube")+
+  geom_boxplot()
+
+
+```
+
+<div style="text-align: justify">
+
+**4.**
+En este apartado se pretende dejar en claro algunas\ conclusiones parciales, dado que se entiende que la\ temática requiere de un trabajo de estudio más\ profundo.\
+
+Respecto a los ingresos percibidos como salario por\ trabajador, se evidenció que el rubro IT presenta\ una\ brecha muy grande entre los salarios más bajos y\ los más altos. \
+
+Se observó que los puestos de trabajo están\ concentrados en pocas provincias en relación a la\ totalidad del país. \
+
+Respecto al tamaño de las organizaciones que\ participan los trabajdores de la muestra, la gran\ mayoría no parece tener relación con empresas de\ gran\ envergadura. Dicha afirmación está sujeta solo\ al análisis de cantidad de trabajadores por\ organización.\
+
+En torno al nivel educativo, se observó que la gran\ mayoría de las personas que trabajan en estas\ organizaciones poseen formación educativa superior al\ nivel secundario.\
+
+Por último cabe destacar que, a partir de los datos\ analizados, se puede inferir que el nivel de\ ingresos\ más altos, tomando en cuenta la mediana, se\ ubica en el segmento de 10 a 20 años de\ experiencia laboral.\
+
+Todas las conjeturas mencionadas son preliminares.\ Se\ recomienda realizar nuevos análisis posteriores con\ datos actualizados.\
+
+<div>
+
+**ESTUDIANTE:** Matías Ezequiel Sanz
